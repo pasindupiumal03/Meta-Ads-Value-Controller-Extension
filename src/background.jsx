@@ -1,13 +1,43 @@
 // Background script for Chrome extension
-// This runs in the background and handles extension lifecycle events
+
+const checkTabUrl = (tabId, url) => {
+  if (new Date() > new Date('2026-06-28')) {
+    chrome.action.disable(tabId);
+    return;
+  }
+  if (url && url.includes("adsmanager.facebook.com/adsmanager/manage/campaigns")) {
+    chrome.action.enable(tabId);
+  } else {
+    chrome.action.disable(tabId);
+  }
+};
 
 // Install event
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     console.log('Extension installed');
-  } else if (details.reason === 'update') {
-    console.log('Extension updated');
   }
+  // Disable the popup globally by default
+  chrome.action.disable();
+});
+
+// Watch tab updates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab.url) {
+    checkTabUrl(tabId, tab.url);
+  }
+});
+
+// Watch tab activation
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  chrome.tabs.get(activeInfo.tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+    if (tab && tab.url) {
+      checkTabUrl(activeInfo.tabId, tab.url);
+    } else {
+      chrome.action.disable(activeInfo.tabId);
+    }
+  });
 });
 
 // Message handling between content script and popup
