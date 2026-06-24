@@ -1,9 +1,9 @@
 {
-  "name": "Extension Name",
-  "version": "1.0",
-  "description": "",
+  "name": "Meta Ads Value Controller",
+  "version": "1.1",
+  "description": "Monitor, edit, and spoof campaign metrics directly inside Facebook Ads Manager in real time.",
   "manifest_version": 3,
-  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }],
+  "content_scripts": [{ "matches": ["https://adsmanager.facebook.com/*"], "js": ["content.js"] }],
   "action": {
     "default_popup": "popup.html"
   },
@@ -17,5 +17,5 @@
     "64": "./assets/icons/64.png",
     "128": "./assets/icons/128.png"
   },
-  "permissions": ["storage"]
+  "permissions": ["storage", "tabs"]
 }

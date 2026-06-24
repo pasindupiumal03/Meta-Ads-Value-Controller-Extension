@@ -33,3 +33,17 @@ body {
   width: 100%;
   height: 100%;
 }
+
+/* Hide scrollbar globally for Chrome/Webkit */
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+}
+
+/* Hide scrollbar for Firefox and Edge */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
