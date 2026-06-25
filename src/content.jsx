@@ -95,8 +95,16 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
 
       if (!name || name === "Campaign" || name === "Off / On" || name === "Delivery" || name === "Results") return;
 
-      // 2. Get Link clicks
-      const clicksCell = rowObj['actions:link_click'] || rowObj[Object.keys(rowObj).find(k => k.includes('link_click'))];
+      // 2. Get Link clicks (ensure exact match, excluding CPC/CTR)
+      const clicksColKey = Object.keys(rowObj).find(k => {
+        const lower = k.toLowerCase();
+        return lower.includes('link_click') && 
+               !lower.includes('cost') && 
+               !lower.includes('rate') && 
+               !lower.includes('cpc') && 
+               !lower.includes('ctr');
+      });
+      const clicksCell = clicksColKey ? rowObj[clicksColKey] : null;
       let linkClicks = clicksCell ? clicksCell.textContent.trim() : null;
       let originalLinkClicks = null;
       let overrideLinkClicks = null;
@@ -190,7 +198,11 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
     let hasLinkClicks = false;
     headers.forEach(header => {
       const text = header.textContent.toLowerCase();
-      if (text.includes('link clicks') || header.querySelector('[data-surface*="link_click"]')) {
+      const hasLinkClicksAttr = Array.from(header.querySelectorAll('*')).some(el => {
+        const ds = (el.getAttribute('data-surface') || '').toLowerCase();
+        return ds.includes('link_click') && !ds.includes('cost') && !ds.includes('rate') && !ds.includes('cpc') && !ds.includes('ctr');
+      });
+      if (text === 'link clicks' || hasLinkClicksAttr) {
         hasLinkClicks = true;
       }
     });
@@ -235,7 +247,11 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
       // Generate a mock ID for fallback
       const rowId = `fallback_${idx}`;
 
-      const clicksCell = row.querySelector('[data-surface*="link_click"]') || row.querySelector('[data-surface*="actions:link_click"]');
+      const clicksCells = Array.from(row.querySelectorAll('[data-surface*="link_click"], [data-surface*="actions:link_click"]'));
+      const clicksCell = clicksCells.find(cell => {
+        const ds = (cell.getAttribute('data-surface') || '').toLowerCase();
+        return !ds.includes('cost') && !ds.includes('rate') && !ds.includes('cpc') && !ds.includes('ctr');
+      }) || null;
       let linkClicks = clicksCell ? clicksCell.textContent.trim() : null;
       let originalLinkClicks = null;
       let overrideLinkClicks = null;
@@ -326,32 +342,57 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
     return num.toString();
   };
 
+  const parseLeftStyle = (el) => {
+    const style = el.getAttribute('style') || '';
+    const match = style.match(/left:\s*([\d.]+)px/);
+    return match ? parseFloat(match[1]) : null;
+  };
+
   const findTotalLinkClicksCell = () => {
     // 1. Find the Link Clicks column alignment reference
     const headers = document.querySelectorAll('[role="columnheader"]');
     let targetLeft = -1;
     let targetRight = -1;
+    let targetLeftStyle = null;
 
     headers.forEach(header => {
       const text = header.textContent.toLowerCase();
-      if (text.includes('link clicks') || header.querySelector('[data-surface*="link_click"]')) {
+      const hasLinkClicksAttr = Array.from(header.querySelectorAll('*')).some(el => {
+        const ds = (el.getAttribute('data-surface') || '').toLowerCase();
+        return ds.includes('link_click') && !ds.includes('cost') && !ds.includes('rate') && !ds.includes('cpc') && !ds.includes('ctr');
+      });
+      if (text === 'link clicks' || hasLinkClicksAttr) {
         const rect = header.getBoundingClientRect();
         targetLeft = rect.left;
         targetRight = rect.right;
+        
+        const leftVal = parseLeftStyle(header);
+        if (leftVal !== null) {
+          targetLeftStyle = leftVal;
+        }
       }
     });
 
     // Fallback to row cell alignment
-    if (targetLeft === -1) {
-      const clicksCells = document.querySelectorAll('[data-surface*="link_click"], [data-surface*="actions:link_click"]');
+    if (targetLeftStyle === null && targetLeft === -1) {
+      const allClicksCells = Array.from(document.querySelectorAll('[data-surface*="link_click"], [data-surface*="actions:link_click"]'));
+      const clicksCells = allClicksCells.filter(cell => {
+        const ds = (cell.getAttribute('data-surface') || '').toLowerCase();
+        return !ds.includes('cost') && !ds.includes('rate') && !ds.includes('cpc') && !ds.includes('ctr');
+      });
       if (clicksCells.length > 0) {
         const rect = clicksCells[0].getBoundingClientRect();
         targetLeft = rect.left;
         targetRight = rect.right;
+        
+        const leftVal = parseLeftStyle(clicksCells[0]);
+        if (leftVal !== null) {
+          targetLeftStyle = leftVal;
+        }
       }
     }
 
-    if (targetLeft === -1) return null;
+    if (targetLeft === -1 && targetLeftStyle === null) return null;
 
     // 2. Find elements containing exactly "Total"
     const allElements = document.querySelectorAll('*');
@@ -362,16 +403,28 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
     for (const label of totalLabels) {
       let parentCell = label.parentElement;
       while (parentCell && parentCell !== document.body) {
-        const rect = parentCell.getBoundingClientRect();
-        const midX = (rect.left + rect.right) / 2;
+        const cellLeft = parseLeftStyle(parentCell);
+        if (targetLeftStyle !== null && cellLeft !== null) {
+          if (Math.abs(cellLeft - targetLeftStyle) < 1) {
+            const labelParent = label.closest('._1b33._av2o') || label.closest('div[class*="_1b33"]');
+            if (labelParent) {
+              const valContainer = labelParent.querySelector('[geotextcolor="value"]') || labelParent.children[0];
+              if (valContainer && valContainer !== label.parentElement) {
+                return valContainer;
+              }
+            }
+          }
+        } else {
+          const rect = parentCell.getBoundingClientRect();
+          const midX = (rect.left + rect.right) / 2;
 
-        if (midX >= targetLeft && midX <= targetRight) {
-          // Find the value sibling inside this cell structure
-          const labelParent = label.closest('._1b33._av2o') || label.closest('div[class*="_1b33"]');
-          if (labelParent) {
-            const valContainer = labelParent.querySelector('[geotextcolor="value"]') || labelParent.children[0];
-            if (valContainer && valContainer !== label.parentElement) {
-              return valContainer;
+          if (midX >= targetLeft && midX <= targetRight) {
+            const labelParent = label.closest('._1b33._av2o') || label.closest('div[class*="_1b33"]');
+            if (labelParent) {
+              const valContainer = labelParent.querySelector('[geotextcolor="value"]') || labelParent.children[0];
+              if (valContainer && valContainer !== label.parentElement) {
+                return valContainer;
+              }
             }
           }
         }
@@ -482,6 +535,92 @@ if (window.location.hostname.includes("adsmanager.facebook.com") && new Date() <
       console.error("Meta Scraper Extension Error:", e);
     }
   };
+
+  let cachedCampaigns = {};
+
+  const loadCache = () => {
+    chrome.storage.local.get(['meta_ads_data'], (result) => {
+      const data = result.meta_ads_data || { campaigns: {} };
+      cachedCampaigns = data.campaigns || {};
+      applyOverridesToDOM();
+    });
+  };
+  loadCache();
+
+  // Listen to storage changes to update cache instantly
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.meta_ads_data) {
+      const data = changes.meta_ads_data.newValue || { campaigns: {} };
+      cachedCampaigns = data.campaigns || {};
+      applyOverridesToDOM();
+    }
+  });
+
+  const applyOverridesToDOM = () => {
+    // 1. Apply overrides to regular cells
+    const cells = document.querySelectorAll('[data-surface*="table_row:"]');
+    cells.forEach(cell => {
+      const dataSurface = cell.getAttribute('data-surface');
+      const match = dataSurface.match(/\/am\/table\/table_row:(\d+)unit\/table_cell:(.+)/);
+      if (match) {
+        const rowId = match[1];
+        const colType = match[2];
+        
+        // Ensure we only match the actual Link Clicks column
+        const isClicksCol = colType.toLowerCase().includes('link_click') && 
+                            !colType.toLowerCase().includes('cost') && 
+                            !colType.toLowerCase().includes('rate') && 
+                            !colType.toLowerCase().includes('cpc') && 
+                            !colType.toLowerCase().includes('ctr');
+
+        if (isClicksCol) {
+          const camp = cachedCampaigns[rowId];
+          if (camp && camp.overrideLinkClicks !== null && camp.overrideLinkClicks !== undefined) {
+            setInnermostText(cell, camp.overrideLinkClicks);
+          }
+        }
+      }
+    });
+
+    // 2. Apply overrides to fallback cells (if any)
+    const rows = document.querySelectorAll('div[role="row"], div[class*="_1gda"]');
+    rows.forEach((row, idx) => {
+      if (row.querySelector('[role="columnheader"]')) return;
+      const rowId = `fallback_${idx}`;
+      const camp = cachedCampaigns[rowId];
+      if (camp && camp.overrideLinkClicks !== null && camp.overrideLinkClicks !== undefined) {
+        const clicksCells = Array.from(row.querySelectorAll('[data-surface*="link_click"], [data-surface*="actions:link_click"]'));
+        const clicksCell = clicksCells.find(cell => {
+          const ds = (cell.getAttribute('data-surface') || '').toLowerCase();
+          return !ds.includes('cost') && !ds.includes('rate') && !ds.includes('cpc') && !ds.includes('ctr');
+        });
+        if (clicksCell) {
+          setInnermostText(clicksCell, camp.overrideLinkClicks);
+        }
+      }
+    });
+
+    // 3. Update Total row
+    updateTotalClicksOnPage(cachedCampaigns);
+  };
+
+  // MutationObserver to apply overrides instantly as soon as new elements mount
+  let frameRequested = false;
+  const observer = new MutationObserver(() => {
+    if (!frameRequested) {
+      frameRequested = true;
+      requestAnimationFrame(() => {
+        applyOverridesToDOM();
+        frameRequested = false;
+      });
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
 
   // Run scraper periodically
   setInterval(updateScrapedData, 1500);

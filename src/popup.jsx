@@ -168,7 +168,7 @@ function Popup() {
       const result = await new Promise(resolve => {
         chrome.storage.local.get([storageKey], res => resolve(res));
       });
-      
+
       const data = result[storageKey] || { campaigns: {} };
       const campaignId = selectedCampaign.id;
       if (data.campaigns[campaignId]) {
@@ -186,7 +186,7 @@ function Popup() {
           }
           data.campaigns[campaignId].overrideLinkClicks = val;
           data.campaigns[campaignId].linkClicks = val;
-          
+
           setSelectedCampaign({
             ...selectedCampaign,
             originalLinkClicks: data.campaigns[campaignId].originalLinkClicks,
@@ -194,7 +194,7 @@ function Popup() {
             linkClicks: val
           });
         }
-        
+
         await new Promise(resolve => {
           chrome.storage.local.set({ [storageKey]: data }, () => resolve());
         });
@@ -213,7 +213,7 @@ function Popup() {
       const result = await new Promise(resolve => {
         chrome.storage.local.get([storageKey], res => resolve(res));
       });
-      
+
       const data = result[storageKey] || { campaigns: {} };
       const campaignId = selectedCampaign.id;
       if (data.campaigns[campaignId]) {
@@ -222,13 +222,13 @@ function Popup() {
         if (orig !== undefined && orig !== null) {
           data.campaigns[campaignId].linkClicks = orig;
         }
-        
+
         setSelectedCampaign({
           ...selectedCampaign,
           overrideLinkClicks: null,
           linkClicks: orig !== undefined && orig !== null ? orig : selectedCampaign.linkClicks
         });
-        
+
         await new Promise(resolve => {
           chrome.storage.local.set({ [storageKey]: data }, () => resolve());
         });
@@ -320,43 +320,27 @@ function Popup() {
               <div className="flex items-center gap-1 bg-slate-100/70 p-0.5 rounded-xl text-[10px] font-bold border border-slate-200/20">
                 <button
                   onClick={() => setActiveTab("all")}
-                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
-                    activeTab === "all" ? "bg-white text-slate-800 shadow-sm border border-slate-200/10" : "text-slate-500 hover:text-slate-700"
-                  }`}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${activeTab === "all" ? "bg-white text-slate-800 shadow-sm border border-slate-200/10" : "text-slate-500 hover:text-slate-700"
+                    }`}
                 >
                   All ({campaigns.length})
                 </button>
                 <button
                   onClick={() => setActiveTab("active")}
-                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
-                    activeTab === "active" ? "bg-white text-emerald-600 shadow-sm border border-emerald-100" : "text-slate-500 hover:text-emerald-600"
-                  }`}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${activeTab === "active" ? "bg-white text-emerald-600 shadow-sm border border-emerald-100" : "text-slate-500 hover:text-emerald-600"
+                    }`}
                 >
                   Active ({activeCount})
                 </button>
                 <button
                   onClick={() => setActiveTab("inactive")}
-                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
-                    activeTab === "inactive" ? "bg-white text-slate-700 shadow-sm border border-slate-200/10" : "text-slate-500 hover:text-slate-700"
-                  }`}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${activeTab === "inactive" ? "bg-white text-slate-700 shadow-sm border border-slate-200/10" : "text-slate-500 hover:text-slate-700"
+                    }`}
                 >
                   Off ({campaigns.length - activeCount})
                 </button>
               </div>
             </div>
-
-            {/* Warning if clicks column missing */}
-            {!hasLinkClicksHeader && (
-              <div className="mx-3 my-2 p-2 bg-amber-50 border border-amber-200/60 rounded-xl flex gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div className="text-[10px] text-amber-800 leading-tight">
-                  <span className="font-bold block">"Link clicks" column not found!</span>
-                  Ensure "Link clicks" is visible in Ads Manager table.
-                </div>
-              </div>
-            )}
 
             {/* Campaign List */}
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 custom-scrollbar">
@@ -369,9 +353,8 @@ function Popup() {
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden mr-2">
                       <span
-                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                          camp.isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.35)]" : "bg-slate-300"
-                        }`}
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${camp.isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.35)]" : "bg-slate-300"
+                          }`}
                         style={{ backgroundColor: camp.isActive ? '#10b981' : '#cbd5e1' }}
                       />
                       <div className="overflow-hidden">
@@ -426,9 +409,8 @@ function Popup() {
                 </svg>
               </button>
               <div className="overflow-hidden">
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider mb-1 ${
-                  selectedCampaign.isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-500 border border-slate-200/20"
-                }`}>
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider mb-1 ${selectedCampaign.isActive ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-500 border border-slate-200/20"
+                  }`}>
                   {selectedCampaign.isActive ? "Active" : "Inactive"}
                 </span>
                 <h2 className="text-xs font-bold text-slate-800 truncate w-72" title={selectedCampaign.name}>
